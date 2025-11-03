@@ -5,7 +5,7 @@ export const frames = [];
 export async function loadVideoFrames() {
   const input = new Input({
     formats: ALL_FORMATS,
-    source: new UrlSource('files/test_A_50proc.webm')
+    source: new UrlSource('files/aksonomeria_test_A_3_klatki_zwolnione_3_krotnie_25proc.webm')
   });
 
   const videoTrack = await input.getPrimaryVideoTrack();
@@ -15,14 +15,18 @@ export async function loadVideoFrames() {
 
   const samples = sink.samples();
 
+  let frameCount = 0;
   for await (const frame of samples) {
-    const canvas = document.createElement("canvas");
-    canvas.width = displayWidth;
-    canvas.height = displayHeight;
-    const ctx = canvas.getContext("2d");
-    frame.draw(ctx, 0, 0);
-    frames.push(canvas);
+    if(frameCount > 2){
+      const canvas = document.createElement("canvas");
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+      const ctx = canvas.getContext("2d");
+      frame.draw(ctx, 0, 0);
+      frames.push(canvas);
+    }
     frame.close();
+    frameCount++;
   }
   console.log(`Loaded ${frames.length} frames`);
 

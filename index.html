@@ -52,12 +52,16 @@
 
   <script type="module">
     import { loadVideoFrames, frames } from './index.js';
+    import './js-loading-overlay.min.js';
+
+    JsLoadingOverlay.show({'spinnerIcon': 'pacman'});
     
     (async function () {
       const player = document.getElementById('player');
       const container = document.getElementById('playerContainer');
 
       await loadVideoFrames();
+      JsLoadingOverlay.hide();
       
       player.width = frames[0].width;
       player.height = frames[0].height;
@@ -96,6 +100,7 @@
 
       let mouseX = -1;
       let currentFrame = 0;
+      let destFrame = 0;
 
       player.addEventListener("mousedown", (event) => {
         mouseX = event.clientX;
@@ -108,18 +113,36 @@
       player.addEventListener("mousemove", (event) => {
         if(mouseX >= 0 && event.clientX != mouseX) {
           const x = event.clientX - mouseX;
-          let nextFrame = currentFrame - x / player.getClientRects()[0].width * frames.length / 2;
+          let nextFrame = destFrame - x / player.getClientRects()[0].width * frames.length;
           // normalize nextFrame into [0, frames.length)
           nextFrame = ((nextFrame % frames.length) + frames.length) % frames.length;
-
-          if(Math.abs(nextFrame - currentFrame) > 1e-6) {
-            currentFrame = nextFrame;
-            drawInterpolatedFrame(currentFrame);
-            mouseX = event.clientX;
-            console.log("Seek to frame: " + currentFrame.toFixed(3));
+          if(nextFrame != destFrame) {
+            destFrame = nextFrame;
+            mouseX = event.clientX; // zresetuj punkt startowy
           }
         }
       });
+
+      setInterval(() => {
+        // animacja do destFrame
+        if (currentFrame != destFrame) {
+          let diff = destFrame - currentFrame;
+          // wybierz krótszą drogę
+          if (Math.abs(diff) > frames.length / 2) {
+            if (diff > 0) {
+              diff -= frames.length;
+            } else {
+              diff += frames.length;
+            }
+          }
+          // przesuń się o część różnicy
+          currentFrame += diff * 0.1;
+          // normalizuj currentFrame do [0, frames.length)
+          currentFrame = ((currentFrame % frames.length) + frames.length) % frames.length;
+
+          drawInterpolatedFrame(Math.round(currentFrame));
+        }
+      }, 15);
     })();
   </script>
 </body>
