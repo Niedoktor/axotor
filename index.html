@@ -19,7 +19,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #fff;
+      background: #EDEFF3;
     }
 
     /* Dodatki dla odtwarzacza wideo */
@@ -38,7 +38,7 @@
       width: auto;
       height: auto;
       display: block;
-      background: #fff;
+      background: #EDEFF3;
       outline: none;
       object-fit: contain;
     }
@@ -79,20 +79,29 @@
         const t = idx - i; // 0..1 - udział klatki j
 
         // wyczyść kanwę
+        ctx.fillStyle = "#EDEFF3";
         ctx.clearRect(0, 0, player.width, player.height);
 
+        // ctx.save();
+        // ctx.translate(player.width / 2, player.height / 2);
+
+        // ctx.rotate((360 / frames.length) * t * Math.PI / 180);
+
         // rysuj klatkę i z alpha = 1 - t
-        ctx.globalAlpha = 1 - t;
+        // ctx.globalAlpha = 1 - t;
+        // ctx.drawImage(frames[i], -player.width / 2, -player.width / 2, player.width, player.height);
         ctx.drawImage(frames[i], 0, 0, player.width, player.height);
 
         // rysuj klatkę j z alpha = t
-        if (t > 0) {
-          ctx.globalAlpha = t;
-          ctx.drawImage(frames[j], 0, 0, player.width, player.height);
-        }
+        // if (t > 0) {
+        //   ctx.globalAlpha = t;
+        //   ctx.rotate(-(360 / frames.length) * Math.PI / 180);
+        //   ctx.drawImage(frames[j], -player.width / 2, -player.width / 2, player.width, player.height);
+        // }
 
         // przywróć alpha
-        ctx.globalAlpha = 1;
+        //ctx.globalAlpha = 1;
+        //ctx.restore();
       }
 
       // narysuj pierwszą klatkę
@@ -102,15 +111,15 @@
       let currentFrame = 0;
       let destFrame = 0;
 
-      player.addEventListener("mousedown", (event) => {
+      player.addEventListener("pointerdown", (event) => {
         mouseX = event.clientX;
       });
 
-      player.addEventListener("mouseup", (event) => {
+      player.addEventListener("pointerup", (event) => {
         mouseX = -1;
       });
 
-      player.addEventListener("mousemove", (event) => {
+      player.addEventListener("pointermove", (event) => {
         if(mouseX >= 0 && event.clientX != mouseX) {
           const x = event.clientX - mouseX;
           let nextFrame = destFrame - x / player.getClientRects()[0].width * frames.length;
@@ -140,7 +149,12 @@
           // normalizuj currentFrame do [0, frames.length)
           currentFrame = ((currentFrame % frames.length) + frames.length) % frames.length;
 
-          drawInterpolatedFrame(Math.round(currentFrame));
+          if(Math.abs(destFrame - currentFrame) < 0.01){
+            currentFrame = destFrame; // zakończ animację
+          }else{
+            drawInterpolatedFrame(currentFrame);
+            console.log(`currentFrame: ${currentFrame.toFixed(2)}, destFrame: ${destFrame.toFixed(2)}`);
+          }
         }
       }, 15);
     })();
