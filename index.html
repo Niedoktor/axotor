@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Axotor — Strona główna</title>
   <meta name="description" content="Prosty, responsywny szablon strony głównej dla projektu Axotor." />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core/index.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/map-plugin@5/index.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5/index.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin@5/index.css" />
   <style>
     * {
       box-sizing: border-box
@@ -22,8 +26,7 @@
       background: #EDEFF3;
     }
 
-    /* Dodatki dla odtwarzacza wideo */
-    .video-wrap {
+    .wrap {
       width: 100%;
       display: flex;
       align-items: center;
@@ -32,11 +35,11 @@
       padding: 0;
     }
 
-    #player {
+    #viewer {
       max-width: 100%;
       max-height: 100vh;
-      width: auto;
-      height: auto;
+      width: 100vh;
+      height: 100vh;
       display: block;
       background: #EDEFF3;
       outline: none;
@@ -46,119 +49,170 @@
 </head>
 
 <body>
-  <div class="video-wrap card" id="playerContainer">
-    <canvas id="player" width="1280" height="720" tabindex="0"></canvas>
+  <div class="wrap card" id="container">
+    <div id="viewer"></div>
   </div>
+</body>
 
-  <script type="module">
-    import { loadVideoFrames, frames } from './index.js';
-    import './js-loading-overlay.min.js';
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three/build/three.module.js",
+            "@photo-sphere-viewer/core": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core/index.module.js",
+            "@photo-sphere-viewer/map-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/map-plugin@5/index.module.js",
+            "@photo-sphere-viewer/markers-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5/index.module.js",
+            "@photo-sphere-viewer/virtual-tour-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin@5/index.module.js"
+        }
+    }
+</script>
 
-    JsLoadingOverlay.show({'spinnerIcon': 'pacman'});
-    
-    (async function () {
-      const player = document.getElementById('player');
-      const container = document.getElementById('playerContainer');
+<script type="module">
+    import { Viewer } from '@photo-sphere-viewer/core';
+    import { MapPlugin } from '@photo-sphere-viewer/map-plugin';
+    import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin';
+    import { VirtualTourPlugin } from '@photo-sphere-viewer/virtual-tour-plugin';
 
-      await loadVideoFrames();
-      JsLoadingOverlay.hide();
-      
-      player.width = frames[0].width;
-      player.height = frames[0].height;
+    const spots = [];
+    const spotPoints = [];
 
-      const ctx = player.getContext('2d');
+    const img = new Image();
+    img.src = "files/spacery_pliki/rzut_z_alpha0000.png";
+    img.addEventListener("load", () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 100; //img.width;
+      canvas.height = 100; //img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
+      img.style.display = "none";
+      const pixel = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = pixel.data;
 
-      // funkcja rysująca interpolowaną klatkę (linear blend)
-      function drawInterpolatedFrame(frameIndexFloat) {
-        // normalizuj zakres [0, frames.length)
-        let idx = frameIndexFloat % frames.length;
-        if (idx < 0) idx += frames.length;
-
-        const i = Math.floor(idx);
-        const j = (i + 1) % frames.length;
-        const t = idx - i; // 0..1 - udział klatki j
-
-        // wyczyść kanwę
-        ctx.fillStyle = "#EDEFF3";
-        ctx.clearRect(0, 0, player.width, player.height);
-
-        // ctx.save();
-        // ctx.translate(player.width / 2, player.height / 2);
-
-        // ctx.rotate((360 / frames.length) * t * Math.PI / 180);
-
-        // rysuj klatkę i z alpha = 1 - t
-        // ctx.globalAlpha = 1 - t;
-        // ctx.drawImage(frames[i], -player.width / 2, -player.width / 2, player.width, player.height);
-        ctx.drawImage(frames[i], 0, 0, player.width, player.height);
-
-        // rysuj klatkę j z alpha = t
-        // if (t > 0) {
-        //   ctx.globalAlpha = t;
-        //   ctx.rotate(-(360 / frames.length) * Math.PI / 180);
-        //   ctx.drawImage(frames[j], -player.width / 2, -player.width / 2, player.width, player.height);
-        // }
-
-        // przywróć alpha
-        //ctx.globalAlpha = 1;
-        //ctx.restore();
+      for(let y = 0; y < canvas.height; y++) {
+        for(let x = 0; x < canvas.width; x++) {
+          const index = (y * canvas.width + x) * 4;
+          if(data[index + 3] !== 255 && !getSpotFromPoint(x, y)) {
+            let spot = [];
+            const tol = 3;
+            for(let y2 = y; y2 <= y + tol; y2++) {
+              for(let x2 = x - tol; x2 <= x + tol; x2++) {
+                if(x2 < 0 || x2 >= canvas.width || y2 < 0 || y2 >= canvas.height) continue;
+                const index2 = (y2 * canvas.width + x2) * 4;
+                if(data[index2 + 3] !== 255) {
+                  spot.push({id: '' + spotPoints.length, x: x2, y: y2});
+                }
+              }
+            }
+            spotPoints.push(spot);
+          }
+        }
       }
 
-      // narysuj pierwszą klatkę
-      drawInterpolatedFrame(0);
-
-      let mouseX = -1;
-      let currentFrame = 0;
-      let destFrame = 0;
-
-      player.addEventListener("pointerdown", (event) => {
-        mouseX = event.clientX;
+      spotPoints.forEach(points => {
+        const sum = points.reduce((acc, point) => {
+          return {x: acc.x + point.x, y: acc.y + point.y};
+        }, {x: 0, y: 0});
+        const spot = {id: points[0].id, x: sum.x / points.length, y: sum.y / points.length};
+        spots.push(spot);
       });
 
-      player.addEventListener("pointerup", (event) => {
-        mouseX = -1;
-      });
+      createViewer(0);
+    });
 
-      player.addEventListener("pointermove", (event) => {
-        if(mouseX >= 0 && event.clientX != mouseX) {
-          const x = event.clientX - mouseX;
-          let nextFrame = destFrame - x / player.getClientRects()[0].width * frames.length;
-          // normalize nextFrame into [0, frames.length)
-          nextFrame = ((nextFrame % frames.length) + frames.length) % frames.length;
-          if(nextFrame != destFrame) {
-            destFrame = nextFrame;
-            mouseX = event.clientX; // zresetuj punkt startowy
+    function getSpotFromPoint(x, y){
+      for(let s = 0; s < spotPoints.length; s++) {
+        const spot = spotPoints[s];
+        for(let point of spot) {
+          if(point.x === x && point.y === y) {
+            return spotPoints[s];
           }
         }
+      }
+
+      return undefined;
+    }
+
+    function createViewer(spotIndex) {
+      const viewer = new Viewer({
+        container: document.querySelector('#viewer'),
+        defaultZoomLvl: 0,
+
+        plugins: [
+          // MapPlugin.withConfig({
+          //     imageUrl: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_rzut_0000.jpg',
+          //     center: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
+          //     defaultZoom: 7,
+          //     minZoom: 5,
+          //     shape: 'square',
+          //     static: true
+          // }),
+          //MarkersPlugin,
+          VirtualTourPlugin.withConfig({
+            positionMode: 'manual',
+            renderMode: '2d',
+            preload: true,
+            transitionOptions: { showLoader: false, speed: '20rpm', effect: 'fade', rotation: true },
+            nodes: spots.map((spot, i) => { return {
+              id: spot.id,
+              panorama: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_SPACERY_000' + i + '.jpg',
+              name: 'Spot ' + i,
+              //position: { yaw: 2 * Math.PI * spot.x / 100, pitch: 0 },
+              //mapPosition: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
+              links: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
+                nodeId: spot2.id,
+                position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
+              }}),
+              // markers: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
+              //   id: spot2.id,
+              //   position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
+              //   circle: 20,
+              //   // data: {
+              //   //   map: {
+              //   //     distance: 220,
+              //   //     circle: 10,
+              //   //   },
+              //   // },
+              //   svgStyle: {
+              //     fill: 'rgba(255, 255, 255, 0.5)',
+              //     stroke: '#8888FF',
+              //     strokeWidth: '2px'
+              //   }
+              // }})
+            }}),
+            startNodeId: '' + spotIndex,
+          })
+          // MarkersPlugin.withConfig({
+          //   markers: spots.filter((spot, i) => { return i !== spotIndex; }).map((spot, i) => { return {
+          //     id: 'spot' + i,
+          //     position: { yaw: 0.11, pitch: 0 },
+          //     circle: 10,
+          //     data: {
+          //       map: {
+          //         distance: 220,
+          //         circle: 10,
+          //       },
+          //     },
+          //     svgStyle: {
+          //       fill: 'rgba(255, 255, 255, 0.5)',
+          //       stroke: '#0000FF',
+          //       strokeWidth: '2px'
+          //     }
+          //   }})
+          // })
+        ],
       });
 
-      setInterval(() => {
-        // animacja do destFrame
-        if (currentFrame != destFrame) {
-          let diff = destFrame - currentFrame;
-          // wybierz krótszą drogę
-          if (Math.abs(diff) > frames.length / 2) {
-            if (diff > 0) {
-              diff -= frames.length;
-            } else {
-              diff += frames.length;
-            }
-          }
-          // przesuń się o część różnicy
-          currentFrame += diff * 0.1;
-          // normalizuj currentFrame do [0, frames.length)
-          currentFrame = ((currentFrame % frames.length) + frames.length) % frames.length;
-
-          if(Math.abs(destFrame - currentFrame) < 0.01){
-            currentFrame = destFrame; // zakończ animację
-          }else{
-            drawInterpolatedFrame(currentFrame);
-            console.log(`currentFrame: ${currentFrame.toFixed(2)}, destFrame: ${destFrame.toFixed(2)}`);
-          }
-        }
-      }, 15);
-    })();
-  </script>
-</body>
+      // const markersPlugin = viewer.getPlugin(MarkersPlugin);
+      const virtualTourPlugin = viewer.getPlugin(VirtualTourPlugin);
+      // markersPlugin.addEventListener('select-marker', ({ marker }) => {
+      //   virtualTourPlugin.setCurrentNode(marker.id);
+      //   console.log('Marker selected:', marker.id);
+      // });
+      // virtualTourPlugin.addEventListener('node-changed', ({ node, data }) => {
+      //   let nextNodeId = parseInt(node.id) + 1;
+      //   if(nextNodeId >= spots.length) nextNodeId = 0;
+      //   virtualTourPlugin.gotoLink('' + nextNodeId, '40rpm')
+      // });
+    }
+</script>
 
 </html>
