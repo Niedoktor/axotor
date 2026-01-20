@@ -132,6 +132,8 @@
     }
 
     function createViewer(spotIndex) {
+      const nodeRotation = [ -Math.PI / 2, -Math.PI / 4, Math.PI / 2, -Math.PI / 2, -Math.PI * 0.6, Math.PI / 4];
+
       const viewer = new Viewer({
         container: document.querySelector('#viewer'),
         defaultZoomLvl: 0,
@@ -146,17 +148,35 @@
           //     static: true
           // }),
           //MarkersPlugin,
+          MapPlugin.withConfig({
+              defaultZoom: 7,
+              minZoom: 5,
+              shape: 'square',
+              static: true,
+              spotStyle: {
+                color: 'white',
+                borderSize: 2,
+                borderColor: '#1E78E6',
+              }
+          }),
           VirtualTourPlugin.withConfig({
             positionMode: 'manual',
             renderMode: '2d',
             preload: true,
-            transitionOptions: { showLoader: false, speed: '20rpm', effect: 'fade', rotation: true },
+            transitionOptions: (node) => {
+              return {
+                showLoader: false,
+                speed: '20rpm',
+                effect: 'fade',
+                rotation: true,
+                rotateTo: { yaw: nodeRotation[parseInt(node.id)], pitch: 0 }
+              }
+            },
             nodes: spots.map((spot, i) => { return {
               id: spot.id,
               panorama: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_SPACERY_000' + i + '.jpg',
               name: 'Spot ' + i,
-              //position: { yaw: 2 * Math.PI * spot.x / 100, pitch: 0 },
-              //mapPosition: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
+              map: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
               links: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
                 nodeId: spot2.id,
                 position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
@@ -178,6 +198,13 @@
               //   }
               // }})
             }}),
+            map: {
+              imageUrl: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_rzut_0000.jpg',
+              defaultZoom: 7,
+              minZoom: 5,
+              shape: 'square',
+              static: true              
+            },
             startNodeId: '' + spotIndex,
           })
           // MarkersPlugin.withConfig({
@@ -208,9 +235,7 @@
       //   console.log('Marker selected:', marker.id);
       // });
       // virtualTourPlugin.addEventListener('node-changed', ({ node, data }) => {
-      //   let nextNodeId = parseInt(node.id) + 1;
-      //   if(nextNodeId >= spots.length) nextNodeId = 0;
-      //   virtualTourPlugin.gotoLink('' + nextNodeId, '40rpm')
+      //   viewer.rotate({ yaw: nodeRotation[parseInt(node.id)], pitch: 0 });
       // });
     }
 </script>
