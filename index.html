@@ -17,9 +17,9 @@
 
     /* Wyśrodkowanie w poziomie i pionie */
     body {
-      margin: 0;
-      min-height: 100vh;
-      height: 100vh;
+      margin: 5vh;
+      min-height: 90vh;
+      height: 90vh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -32,14 +32,13 @@
       align-items: center;
       justify-content: center;
       height: 100vh; /* zajmuje pełną wysokość widoku */
-      padding: 0;
     }
 
     #viewer {
       max-width: 100%;
-      max-height: 100vh;
+      max-height: 90vh;
       width: 100vh;
-      height: 100vh;
+      height: 90vh;
       display: block;
       background: #EDEFF3;
       outline: none;
@@ -149,10 +148,11 @@
           // }),
           //MarkersPlugin,
           MapPlugin.withConfig({
-              defaultZoom: 7,
+              defaultZoom: 10,
               minZoom: 5,
               shape: 'square',
               static: true,
+              size: '30vh',
               spotStyle: {
                 color: 'white',
                 borderSize: 2,
