@@ -203,6 +203,7 @@
       });
 
       const virtualTourPlugin = viewer.getPlugin(VirtualTourPlugin);
+      const mapPlugin = viewer.getPlugin(MapPlugin);
 
       const nodes = spots.map((spot, i) => { return {
         id: spot.id,
@@ -241,6 +242,7 @@
       await Promise.all(nodes.map((node) => preloadPanorama(node)));
 
       virtualTourPlugin.setNodes(nodes);
+      mapPlugin.open();
 
       // const markersPlugin = viewer.getPlugin(MarkersPlugin);
       
