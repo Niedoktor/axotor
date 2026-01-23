@@ -133,7 +133,7 @@
       return undefined;
     }
 
-    function createViewer(spotIndex) {
+    async function createViewer(spotIndex) {
       const nodeRotation = [ -Math.PI / 2, -Math.PI / 4, Math.PI / 2, -Math.PI / 2, -Math.PI * 0.6, Math.PI / 4];
 
       const viewer = new Viewer({
@@ -141,31 +141,28 @@
         defaultZoomLvl: 0,
 
         plugins: [
-          // MapPlugin.withConfig({
-          //     imageUrl: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_rzut_0000.jpg',
-          //     center: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
-          //     defaultZoom: 7,
-          //     minZoom: 5,
-          //     shape: 'square',
-          //     static: true
-          // }),
           //MarkersPlugin,
           MapPlugin.withConfig({
-              defaultZoom: 10,
-              minZoom: 5,
-              shape: 'square',
-              static: true,
-              size: '30vh',
-              spotStyle: {
-                color: 'white',
-                borderSize: 2,
-                borderColor: '#1E78E6',
-              }
+            defaultZoom: 10,
+            minZoom: 5,
+            shape: 'square',
+            static: true,
+            size: '30vh',
+            visibleOnLoad: false,
+            spotStyle: {
+              color: 'white',
+              borderSize: 2,
+              borderColor: '#1E78E6',
+            },
+            buttons: {
+              north: false,
+              reset: false
+            }
           }),
           VirtualTourPlugin.withConfig({
             positionMode: 'manual',
             renderMode: '2d',
-            preload: true,
+            preload: false,
             transitionOptions: (node) => {
               return {
                 showLoader: false,
@@ -175,38 +172,12 @@
                 rotateTo: { yaw: nodeRotation[parseInt(node.id)], pitch: 0 }
               }
             },
-            nodes: spots.map((spot, i) => { return {
-              id: spot.id,
-              panorama: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_SPACERY_000' + i + '.jpg',
-              name: 'Spot ' + i,
-              map: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
-              links: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
-                nodeId: spot2.id,
-                position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
-              }}),
-              // markers: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
-              //   id: spot2.id,
-              //   position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
-              //   circle: 20,
-              //   // data: {
-              //   //   map: {
-              //   //     distance: 220,
-              //   //     circle: 10,
-              //   //   },
-              //   // },
-              //   svgStyle: {
-              //     fill: 'rgba(255, 255, 255, 0.5)',
-              //     stroke: '#8888FF',
-              //     strokeWidth: '2px'
-              //   }
-              // }})
-            }}),
             map: {
-              imageUrl: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_rzut_0000.jpg',
-              defaultZoom: 7,
-              minZoom: 5,
-              shape: 'square',
-              static: true              
+               imageUrl: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_rzut_0000.jpg',
+            //   defaultZoom: 7,
+            //   minZoom: 5,
+            //   shape: 'square',
+            //   static: true              
             },
             startNodeId: '' + spotIndex,
           })
@@ -231,14 +202,54 @@
         ],
       });
 
-      // const markersPlugin = viewer.getPlugin(MarkersPlugin);
       const virtualTourPlugin = viewer.getPlugin(VirtualTourPlugin);
+
+      const nodes = spots.map((spot, i) => { return {
+        id: spot.id,
+        panorama: 'files/spacery_pliki/spacery_do_rzutu_000/ucz_SPACERY_000' + i + '.jpg',
+        name: 'Spot ' + i,
+        map: { x: 4000 * spot.x / 100, y: 4000 * spot.y / 100 },
+        links: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
+          nodeId: spot2.id,
+          position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
+        }}),
+        // markers: spots.filter((s, j) => i !== j).map((spot2, j) => { return {
+        //   id: spot2.id,
+        //   position: { yaw: Math.atan2(spot2.y - spot.y, spot2.x - spot.x) + Math.PI / 2, pitch: 0 },
+        //   circle: 20,
+        //   // data: {
+        //   //   map: {
+        //   //     distance: 220,
+        //   //     circle: 10,
+        //   //   },
+        //   // },
+        //   svgStyle: {
+        //     fill: 'rgba(255, 255, 255, 0.5)',
+        //     stroke: '#8888FF',
+        //     strokeWidth: '2px'
+        //   }
+        // }})
+      }});
+
+      let n = 0;
+      async function preloadPanorama(node) {
+        await viewer.textureLoader.preloadPanorama('files/spacery_pliki/spacery_do_rzutu_000/ucz_SPACERY_000' + node.id + '.jpg');
+        viewer.loader.setProgress((n + 1) / nodes.length * 100);
+        n++;
+      }
+
+      await Promise.all(nodes.map((node) => preloadPanorama(node)));
+
+      virtualTourPlugin.setNodes(nodes);
+
+      // const markersPlugin = viewer.getPlugin(MarkersPlugin);
+      
       // markersPlugin.addEventListener('select-marker', ({ marker }) => {
       //   virtualTourPlugin.setCurrentNode(marker.id);
       //   console.log('Marker selected:', marker.id);
       // });
       // virtualTourPlugin.addEventListener('node-changed', ({ node, data }) => {
-      //   viewer.rotate({ yaw: nodeRotation[parseInt(node.id)], pitch: 0 });
+      //  viewer.rotate({ yaw: nodeRotation[parseInt(node.id)], pitch: 0 });
       // });
     }
 </script>
